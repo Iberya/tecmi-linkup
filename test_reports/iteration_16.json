@@ -1,0 +1,24 @@
+{
+  "summary": "Iteration 16 backend-only. Added 6 new tests in test_tipo_admin_and_certs.py covering: (a) PUT /api/students/{admin_id} persists tipo_admin='lider'/'docente'/'ejecutivo'/'administrador' with X-User-Id header and verified via GET /api/bootstrap; (b) idempotent update lider->docente; (c) partial PUT without tipo_admin does NOT wipe the existing value (data.model_dump filters None via 'v is not None' in server.py:367); (d) every certificate returned by /api/bootstrap has non-empty string 'categoria' (prevents frontend toUpperCase crash). Regression: all 59 prior tests still green. Total 65/65 PASSED.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_tipo_admin_and_certs.py",
+    "/app/test_reports/pytest/iteration_16.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py:367 uses data.model_dump() with post-filter 'v is not None' instead of model_dump(exclude_unset=True). Current behavior happens to be safe (None fields are dropped so partial PUT preserves), but the docstring/context in the review request mentions exclude_unset semantics. If in the future someone needs to intentionally CLEAR a field with null, this pattern will block it. Consider migrating to exclude_unset=True for explicit semantics.",
+    "ProfileUpdate lacks value validation for tipo_admin (accepts any string). Recommend Literal['lider','docente','ejecutivo','administrador'] or an Enum to reject typos server-side.",
+    "GET /api/bootstrap returns admin's own record in data['student'] but excludes admins from data['students']. That's correct; just noting for maintainers."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_tipo_admin_and_certs.py (new)"
+  ],
+  "success_rate": {"backend": "100% (65/65)", "frontend": "not tested (backend only)"},
+  "test_credentials": "New admin accounts are created per-test via signup (admin.tipo.<hex>@tecmilenio.mx) since admin.demo@tecmilenio.mx is not seeded.",
+  "seed_data_creation": "None (test users only, self-cleaning by unique email).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: `export $(grep -v '^#' /app/frontend/.env | xargs) && pytest /app/backend/tests/ -v`. ProfileUpdate now includes tipo_admin (Optional[str]) alongside campus/certificado/intereses/semestre/carrera/descripcion/avatar/certificados_cursados. PUT /students/{id} filters None values before $set, so partial updates never wipe existing fields."
+}

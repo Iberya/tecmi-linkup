@@ -1,0 +1,14 @@
+{
+  "summary": "Backend regression re-test after fixes. All 16 tests in /app/backend/tests/test_public_api.py passed (100%). Verified: (a) test_profile_update_persists_all_fields passes now that ensure_extensions() uses conditional filter {'semestre': {'$exists': False}} so /api/bootstrap does NOT overwrite existing profile fields. (b) test_admin_create_mission passes because POST /api/admin/missions returns both 'nombre' and 'titulo' fields.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_public_api.py", "/app/test_reports/pytest/iteration_8.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "N/A (skipped per request)"},
+  "seed_data_creation": "None (used existing seeded student-mar & admin data)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 16 backend tests green after ensure_extensions guard + admin_create_mission returning nombre+titulo. Note: pytest requires REACT_APP_BACKEND_URL to be exported from frontend/.env before running; test file reads it via os.environ[]. Public URL: https://profile-progress-2.preview.emergentagent.com."
+}

@@ -1,0 +1,34 @@
+{
+  "summary": "Backend regression passed 5/5. Browser verified app load, editable profile fields with local avatar upload/save, global community chat, and private chat. Mission idempotency was not completed in this browser run because the XP total has no stable data-testid; prior iteration API retest passed it.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_public_api.py",
+    "/app/test_reports/pytest/pytest_results_iteration4.xml"
+  ],
+  "action_items": [
+    "Add data-testid=\"xp-total\" to the mission XP summary (or another stable selector) so the requested duplicate-XP UI assertion is testable."
+  ],
+  "critical_code_review_comments": [
+    "Profile save sends the complete student object to a Pydantic update model, but unsupported fields are ignored; requested profile fields are explicitly modeled and persisted."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_4.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "80%"
+  },
+  "seed_data_creation": "Updated shared demo profile fields and added test community/direct messages during browser verification; no new seed records created.",
+  "retest_needed": true,
+  "should_call_test_agent_after_fix": true,
+  "context_for_next_testing_agent": "App load, profile controls/local avatar/save, community chat send, and direct chat send passed. Mission UI is rendered and shows completed rows, but XP summary lacks data-testid=xp-total; use text-based inspection or retest after adding a stable test id.",
+  "rca of the issue": "The browser test expected data-testid=\"xp-total\" on the visible XP summary, but Missions renders <div className=\"xp-total\"> without a data-testid. This is a testability/accessibility instrumentation gap, not evidence of duplicate XP. Backend test_public_api.py passed; prior iteration API verification established repeated completion returns zero XP."
+}

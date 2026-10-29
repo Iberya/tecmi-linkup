@@ -1,0 +1,32 @@
+{
+  "summary": "Backend regression + new Tecmi Link-Up extension tests. 57/59 passed. All 48 prior regression tests remain green. New coverage: 40 campuses by state (with is_connect/x/y/community_count), 42 categorized certificates, 22 careers grouped by area in bootstrap.careers, admin metrics reflect new counts (campus_conectados >=40, certificados_activos >=42). 2 FAILURES: both trace to a single missing-field bug — ProfileUpdate Pydantic model lacks 'carrera', so PUT /api/students/{id} silently drops carrera and it is never persisted or returned in bootstrap.student.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/students/{student_id}", "issue": "Missing 'carrera' field on ProfileUpdate model (server.py L37-44). Field is silently dropped by Pydantic, so student's carrera is never persisted and bootstrap.student.carrera is undefined. Two tests fail: test_profile_update_persists_carrera and test_profile_update_carrera_alongside_campus.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_tecmi_extensions.py",
+    "/app/backend/tests/test_public_api.py",
+    "/app/backend/tests/test_auth_and_cometas.py",
+    "/app/test_reports/pytest/iteration_14.xml"
+  ],
+  "action_items": [
+    "Add `carrera: Optional[str] = None` to ProfileUpdate model in /app/backend/server.py (around line 37-44). No other changes required — update_student already generic-persists any Optional field via model_dump()."
+  ],
+  "critical_code_review_comments": [
+    "ProfileUpdate model does not evolve alongside new profile fields — recommend either widening the model or accepting a Dict payload for extensible profile updates (or at minimum adding a test that pings each documented field).",
+    "ensure_extensions() reseeds campuses/certificates when count<20; if admin adds 20+ TEST_ items this heuristic could prevent legitimate reseeding after future data model changes. Consider a version marker instead of count threshold.",
+    "server.py is 626 lines; near the 700-line split threshold. Consider extracting seed/ensure_extensions and route groups into modules soon.",
+    "admin/metrics reports total campuses as 'campus_conectados', but semantically 'conectados' should probably filter by is_connect=True. Currently the label is misleading (returns 40, not the 6-7 with is_connect=True)."
+  ],
+  "updated_files": ["/app/backend/tests/test_tecmi_extensions.py (new)"],
+  "success_rate": {"backend": "96.6% (57/59)", "frontend": "not tested (backend only per request)"},
+  "seed_data_creation": "None beyond what ensure_extensions() produces automatically",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Only one code change needed: add 'carrera: Optional[str] = None' to ProfileUpdate. After that, re-run: `export REACT_APP_BACKEND_URL=$(grep REACT_APP_BACKEND_URL /app/frontend/.env | cut -d= -f2) && pytest /app/backend/tests/ -v`. New file /app/backend/tests/test_tecmi_extensions.py covers all extension features (careers, 40 campuses, 42 certs, metrics, carrera PUT persistence). Note: previous test test_profile_update_persists_all_fields mutates student-mar avatar/descripcion — my carrera test now expects those mutations to coexist and does not overwrite them.",
+  "rca of the issue": "PUT /api/students/{id} uses `data: ProfileUpdate` and then `{k:v for k,v in data.model_dump().items() if v is not None}`. Pydantic's default `extra='ignore'` drops any field not declared on the model. Since 'carrera' isn't declared, the client-supplied value never enters model_dump() and thus is never persisted. Fix: add `carrera: Optional[str] = None` to ProfileUpdate. No changes to the endpoint body needed."
+}

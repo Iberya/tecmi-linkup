@@ -1,0 +1,34 @@
+{
+  "summary": "Backend-only regression against Tecmi Quest API (16 tests). 14/16 passing. Two real bugs surfaced: (1) ensure_extensions() overwrites profile fields (semestre/descripcion/avatar/certificados_cursados) every /api/bootstrap call, so PUT /api/students updates do not persist; (2) POST /api/admin/missions is shadowed by the specific route and returns 'titulo' while POST /api/admin/{campuses|certificates|interests} returns 'nombre' — inconsistent shape from the generic catalog endpoint. All other requested endpoints (bootstrap shape, match with numeric score excluding student-mar, match/connect + connections/{id} same shape, feed create/react/report + reported flag + desc ordering, community join/leave toggle with members counter, community messages ordering asc, DM by conversation_id, event register toggle with attendees balance, admin metrics all 7 keys, admin students status toggle + 404, admin create event, admin create mission, admin catalog validation with 400 on unknown) behave correctly.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/students/{id} + GET /api/bootstrap", "issue": "ensure_extensions() on every /api/bootstrap call unconditionally $set overrides semestre='6º semestre', descripcion, avatar and certificados_cursados for student-mar, wiping any profile update made via PUT /api/students/student-mar. Test test_profile_update_persists_all_fields fails on semestre. Fix: use $setOnInsert (upsert) or gate the write to only-if-missing (e.g. update_one with filter {'semestre': {'$exists': False}}), so seed data doesn't overwrite user edits.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/admin/missions vs POST /api/admin/{collection}", "issue": "Route ordering makes the specific admin_create_mission always match, returning {titulo, goal, xp, color, progress} while the generic catalog endpoint (used for campuses/certificates/interests) returns {nombre, descripcion}. Response shape for 'missions' via the generic path is therefore unreachable, and clients that expect a uniform CatalogCreate response get a different schema. Consider either removing the missions branch inside admin_create or aligning admin_create_mission to also include 'nombre' in the response."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_public_api.py",
+    "/app/test_reports/pytest/pytest_results_iteration7.xml"
+  ],
+  "action_items": [
+    "Fix ensure_extensions() so it does not overwrite student-mar profile fields on every bootstrap call (use $setOnInsert via upsert or conditional filter). This is the root cause of profile updates appearing to 'not save' from the UI perspective after a page refresh.",
+    "Decide response contract for POST /api/admin/missions: either drop the specialized route (let generic catalog handle it) or add 'nombre' alias to keep shape consistent."
+  ],
+  "critical_code_review_comments": [
+    "server.py is a single 247-line file — acceptable, but seed()/ensure_extensions() should be idempotent and non-destructive; current ensure_extensions() uses $set (destructive) for student-mar defaults.",
+    "Route order pitfall: @api.post('/admin/{collection}') is declared last but any earlier /admin/<literal> route will shadow it — document allowed collections vs specialized routes to avoid future drift.",
+    "connect() and match_connect() both hardcode message 'Solicitud enviada' — OK, but no idempotency check (repeated calls always succeed even for non-existent students, since update_one silently matches 0 documents).",
+    "POST /api/connections/{student_id} does not 404 on unknown ids — silent success may hide bugs.",
+    "CORS_ORIGINS default is '*' with allow_credentials=True — invalid combo per CORS spec; browsers will reject."
+  ],
+  "updated_files": ["/app/backend/tests/test_public_api.py"],
+  "success_rate": {"backend": "87.5% (14/16)", "frontend": "N/A (skipped per request)"},
+  "seed_data_creation": "Test-created rows are prefixed with TEST_ (feed posts, community messages, DMs, admin catalog entries, event, mission). They persist in MongoDB and are non-destructive to seed data.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Only 2 failures — both real backend bugs, not test flakiness. Re-run same suite after main agent fixes ensure_extensions() overwrite and /admin/missions shape. All other 14 tests should stay green. Use REACT_APP_BACKEND_URL from /app/frontend/.env. No auth involved.",
+  "rca of the issue": "Profile-update persistence bug: server.py:92-95 unconditionally applies $set for semestre/descripcion/certificados_cursados/avatar every time /api/bootstrap is called. Since the frontend calls /api/bootstrap on load, any PUT-based edit is reverted on next refresh. Reproduction: PUT /api/students/student-mar {semestre:'7º semestre'} -> 200 with '7º'. Then GET /api/bootstrap -> student.semestre='6º semestre'. Mitigation: replace the $set block inside ensure_extensions with a conditional upsert like `await db.students.update_one({'id':'student-mar','semestre':{'$exists':False}},{'$set':{...}})` or run ensure_extensions() once at startup instead of on every /bootstrap call."
+}

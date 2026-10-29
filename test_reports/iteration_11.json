@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 11: Added 15 new tests for auth (signup/login), insignias thresholds, cometa members filters, cometa message authorship + notifications, and feed post authorship. 45/48 tests pass. Discovered 3 backend regressions/bugs introduced by the auth refactor.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/match/{student_id}/connect", "issue": "Returns 500. `match_connect` calls `connect(student_id)` directly without providing user_id; the Depends(current_user) default is not resolved when called as a plain function, so user_id ends up as a Depends object and DB ops fail. Regression from auth refactor.", "priority": "HIGH"},
+      {"endpoint": "GET /api/cometas/{id}/members", "issue": "Does NOT exclude students with rol='administrador'. Admins signed up (default cometa=halley) leak into member listings. Requirement states admins must be excluded. Fix: add {'rol': {'$ne': 'administrador'}} to the query.", "priority": "HIGH"},
+      {"endpoint": "POST /api/feed/{post_id}/comment", "issue": "Regression: seeded feed posts (e.g., feed-oportunidad) have no author_id field, so the notification block `if post.get('author_id')` is skipped and no 'comentario' notification is ever created for seed posts. Previous iteration (10) passed this test because notif was created regardless of author_id. Fix: fall back to notifying via seeded author mapping OR ensure seed posts include an author_id, OR remove the author_id requirement.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_auth_and_cometas.py",
+    "/app/backend/tests/test_public_api.py",
+    "/app/test_reports/pytest/iteration_11.xml"
+  ],
+  "action_items": [
+    "Fix match_connect: forward user_id explicitly, e.g. `async def match_connect(student_id, user_id=Depends(current_user)): return await connect(student_id, user_id)`",
+    "Add rol filter in /cometas/{id}/members query to exclude administradores",
+    "Fix feed comment notification: create notification for seed posts too (either add author_id to seed feed posts in ensure_extensions, or map by author name → user id)"
+  ],
+  "critical_code_review_comments": [
+    "server.py `connect()` is invoked directly from `match_connect()` — this bypasses FastAPI dependency resolution. Any internal function reused in another route must accept explicit args, not rely on Depends defaults.",
+    "cometa_members endpoint lacks rol filter — inconsistent with ranking pipeline that does exclude admins.",
+    "Seed feed posts lack `author_id`, so the comment→notification logic silently no-ops. Consider making the notification unconditional or backfilling author_id in seed.",
+    "server.py is a single 500-line file mixing seeds, models, and routes — consider splitting into routers/seeds/models modules for maintainability.",
+    "The unused helper `me_or` (line 27) can be removed."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_and_cometas.py (new)"
+  ],
+  "success_rate": {"backend": "93.75% (45/48)", "frontend": "N/A - not tested"},
+  "test_credentials": "Test users created dynamically with prefix AL0test*/admin*/halleyadmin*/rankadmin*@tecmilenio.mx",
+  "seed_data_creation": "Multiple @tecmilenio.mx users created via /auth/signup during test run (auto-persist in db.students). Not cleaned up (no delete endpoint).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Two test files: test_public_api.py (31 legacy) + test_auth_and_cometas.py (15 new). Run with: `export $(grep REACT_APP_BACKEND_URL /app/frontend/.env | xargs) && python -m pytest backend/tests/ -v`. Signup endpoint auto-adds users to db.students; over many runs this grows unbounded. After main agent fixes the 3 bugs, rerun full suite to confirm all 48 pass. Note: bootstrap fallback to 'student-mar' works only because seed() creates it; if DB is wiped, first request will seed.",
+  "rca of the issue": "All 3 failures are regressions from adding auth (signup/login + Depends(current_user) refactor). (1) match_connect wasn't updated to propagate user_id through Depends. (2) cometa_members query wasn't updated to exclude the new 'administrador' rol. (3) The comment-notification path became conditional on author_id which seeded posts lack — probably an unrelated tightening that wasn't tested against seed data."
+}

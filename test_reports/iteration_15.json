@@ -1,0 +1,25 @@
+{
+  "summary": "Regresión completa post-fix ProfileUpdate.carrera. 59/59 tests PASSED. Los dos tests que fallaban previamente (test_profile_update_persists_carrera, test_profile_update_carrera_alongside_campus) ahora pasan. Se detectó pollución transitoria de DB (items TEST_campuses/TEST_certificates creados por test_admin_catalog_allowed_and_rejected en test_public_api.py corriendo en paralelo con test_tecmi_extensions.py). Se ajustaron los tests de extensiones para filtrar items con prefijo TEST_ antes de validar campos/cardinalidad; los asserts semánticos (>=40 campuses reales, >=42 certs reales, conteos por estado) se mantienen.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_tecmi_extensions.py",
+    "/app/backend/tests/test_public_api.py",
+    "/app/backend/tests/test_auth_and_cometas.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "test_admin_catalog_allowed_and_rejected inserta TEST_campuses/TEST_certificates sin campos requeridos (estado/categoria) y NO limpia. Contamina bootstrap para futuros runs. Recomendación: agregar teardown/fixture que borre docs TEST_* al finalizar la clase, o hacer el endpoint /api/admin/{col} rechazar payloads incompletos.",
+    "ensure_extensions() usa heurística count<20 para reseed; con acumulación de TEST_ items puede bloquear reseed legítimo tras cambios de esquema (mismo comentario que iter 14).",
+    "Pydantic ProfileUpdate sigue enumerando campos manualmente — pattern frágil. Evaluar model_config extra='allow' o migrar a Dict[str,Any] validado."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_tecmi_extensions.py (filtro TEST_ en asserts de campuses/certs)"
+  ],
+  "success_rate": {"backend": "100% (59/59)", "frontend": "not tested (backend only)"},
+  "seed_data_creation": "Ninguno; se limpiaron 2 TEST_campuses y 2 TEST_certificates residuales de iteraciones previas antes de la corrida.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Los tests filtran items TEST_* para tolerar pollución generada por test_admin_catalog_allowed_and_rejected. Si en el futuro cambian cardinalidades reales (40 campuses / 42 certs), ajustar los umbrales en test_tecmi_extensions.py. Para correr: `export $(grep -v '^#' /app/frontend/.env | xargs) && pytest /app/backend/tests/ -v`."
+}
