@@ -1,0 +1,22 @@
+TECMI LINK-UP - DEMO LOCAL
+==========================
+
+Requisito: Python 3.10 o más reciente (https://www.python.org/downloads/).
+En Windows marca "Add Python to PATH" al instalarlo.
+
+Cómo abrirla:
+  Windows:      doble clic en INICIAR_WINDOWS.bat
+  Mac / Linux:  doble clic en iniciar_mac_linux.command
+                (o en Terminal: ./iniciar_mac_linux.command)
+
+La primera vez descarga lo necesario (1-2 minutos). Después se abre sola en
+http://localhost:8765. Para apagarla, cierra la ventana negra.
+
+Cuentas de prueba (contraseña Linkup2026):
+  Estudiante:  AL01234567@tecmilenio.mx
+  Docente:     laura.mendez@tecmilenio.mx
+  También puedes crear cuentas nuevas desde "Crear cuenta".
+
+Importante: la base de datos vive en memoria. Cada vez que la cierras y la
+vuelves a abrir empieza de nuevo con los datos de ejemplo. Es solo para
+probar y presentar; la versión real es la que se sube a Emergent.
